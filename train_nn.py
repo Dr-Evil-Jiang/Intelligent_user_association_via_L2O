@@ -41,7 +41,7 @@ def train_nn(net, train_set, val_set, device, batch_size=256, max_epochs=100, pa
             G_batch, f_batch, t_batch = G_batch.to(device), f_batch.to(device), t_batch.to(device)
             optimizer.zero_grad()
             channel_gains = torch.abs(G_batch[t_batch.squeeze_(
-                dim=-1)]).float()  # Tensor in shape [batch_size, num_BDs]
+                dim=-1)] * torch.squeeze(f_batch, dim=-1)).float()  # Tensor in shape [batch_size, num_BDs]
             as_vect = net.forward(channel_gains)
             loss = loss_module(G_batch, f_batch, t_batch, as_vect)
             loss.backward()
