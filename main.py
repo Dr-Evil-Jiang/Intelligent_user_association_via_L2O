@@ -16,8 +16,8 @@ if __name__ == '__main__':
     OVERWRITE_MODEL = True
     OVERWRITE_DATASET = True
     # parameters:
-    num_MUs = 10
-    num_BDs = 10
+    num_MUs = 3
+    num_BDs = 3
     num_batches = 1000_000
     train_batch_size = 500
     test_batch_size = 500

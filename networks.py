@@ -47,6 +47,8 @@ class UserAssociationLoss(nn.Module):
         t: TDMA scheduler indicating which MU is currently transmitting, Tensor one-hot[bool], in shape [batch_size, M, 1]
         as_vect: user association vector via Grumble trick , Tensor in shape [batch_size, N]
         """
-        received_signal = calculate_throughput(G, f, t, as_vect)
-        return -torch.mean(received_signal)  # NOTE: the minus sign indicates that we employ gradient ascent.
+        # loss = - w * torch.sum(calculate_throughput(G, f, t, as_vect)) \
+        #        - (1 - w) * torch.sum(as_vect * torch.log2(as_vect)) # Not good
+        loss = - torch.sum(calculate_throughput(G, f, t, as_vect)) # good performance
+        return loss
 
