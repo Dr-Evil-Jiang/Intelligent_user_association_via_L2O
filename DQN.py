@@ -1,13 +1,8 @@
-import os
-import sys
-import time
-import math
-import random
+import os.path
 
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from networks import DeepQNetwork
 
@@ -25,7 +20,7 @@ class ReplayMemory:
 
     def push_transition(self, curr_state, action, reward, next_state, is_terminated):
         """
-        Function: this function is to store the transition.
+        Function: this function is to store the transition
         :param curr_state: current state, np.ndarray in shape [state_dims]
         :param action: action, np.ndarray in shape [action_dims]
         :param reward: scalar float
@@ -55,7 +50,8 @@ class ReplayMemory:
 
 class DQNAgent:
     def __init__(self, gamma, epsilon, state_dims, action_dims, num_actions, memory_size=50000, batch_size=32,
-                 update_every=10000, lr=0.001, eps_dec=5e-5, eps_min=0.1, device='cpu'):
+                 update_every=10000, lr=0.001, eps_dec=5e-5, eps_min=0.1, device='cpu',
+                 model_path='./model/dqn_solution', model_name='DQN'):
         self.gamma = gamma
         self.epsilon = epsilon
         self.state_dims = state_dims
@@ -73,6 +69,8 @@ class DQNAgent:
         self.q_eval = DeepQNetwork(state_dims, num_actions).to(device)  # Q eval
         self.q_target = DeepQNetwork(state_dims, num_actions).to(device)  # Q target
         self.q_eval_optimizer = torch.optim.RMSprop(self.q_eval.parameters(), lr=lr)
+        self.model_path = model_path
+        self.model_name = model_name
         self.loss_module = nn.MSELoss()
 
     def memorize(self, curr_state, action, reward, next_state, is_terminated):
@@ -132,3 +130,14 @@ class DQNAgent:
 
         self.total_step += 1
         self.decrement_epsilon()
+
+    def save_model(self):
+        os.makedirs(self.model_path, exist_ok=True)
+        path = os.path.join(self.model_path, self.model_name)
+        torch.save(self.q_eval, path + '_eval.pt')
+        torch.save(self.q_target, path + '_target.pt')
+
+    def load_model(self):
+        path = os.path.join(self.model_path, self.model_name)
+        self.q_eval = torch.load(path + '_eval.pt')
+        self.q_target = torch.load(path + '_target.pt')

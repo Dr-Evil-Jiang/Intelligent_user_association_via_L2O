@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import json
 from utils import *
+from DQN import DQNAgent
 from networks import *
 
 
@@ -88,5 +89,37 @@ def val_model(net, val_loader, device):
     gap_avg = gap / count
     print(f'The testing gap is {gap_avg}')
     return gap_avg
+
+
+def train_dqn(DQN_Agent, train_dataset):
+    train_loader = data.DataLoader(train_dataset, shuffle=False, batch_size=1, drop_last=False)
+    G_batch, f_batch, t_batch = next(iter(train_loader))
+    action = torch.randint(0, DQN_Agent.num_actions, (1, ))
+    observation = torch.abs(G_batch[t_batch.squeeze_(dim=-1)]).float()
+    observation = torch.cat((observation, torch.Tensor([[action]])), dim=-1)
+    reward_trace = []
+    best_reward = -np.inf
+    for step in range(len(train_loader)-1):
+        action = DQN_Agent.take_action(observation.numpy())  # the index of action and needs to be converted to one-hot.
+        as_vect = torch.zeros((1, DQN_Agent.num_actions),
+                              dtype=torch.float32).scatter_(1, torch.Tensor([[action]]).long(), 1.0)
+        reward = calculate_throughput(G_batch, f_batch, t_batch, as_vect).item()
+        done = 1  # Since this game has no episodes.
+        G_batch, f_batch, t_batch = next(iter(train_loader))
+        observation_ = torch.abs(G_batch[t_batch.squeeze_(dim=-1)]).float()
+        observation_ = torch.cat((observation_, torch.Tensor([[action]])), dim=-1)
+        DQN_Agent.memorize(observation.numpy(), action, reward, observation_.numpy(), int(done))
+        DQN_Agent.learn()
+        observation = observation_
+        best_reward = reward if reward > best_reward else reward
+        reward_trace.append(reward)
+        if step % 1 == 0:
+            print(f'The avg reward is {np.mean(reward_trace[-500:])}, best reward is {best_reward}')
+
+
+
+
+
+
 
 

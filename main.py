@@ -1,14 +1,9 @@
-import torch
-import os
-import sys
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from utils import *
 from networks import *
-from train_nn import train_nn
+from train_nn import train_nn, train_dqn
 from datasets import *
+from DQN import DQNAgent
 from tqdm import tqdm
+from utils import unsupervised_learning_test
 
 if __name__ == '__main__':
     # Step 1: determine the device on which the model is trained and some parameters:
@@ -18,7 +13,7 @@ if __name__ == '__main__':
     # parameters:
     num_MUs = 10
     num_BDs = 10
-    num_batches = 1000_000
+    num_batches = 100  # 1000_000
     train_batch_size = 500
     test_batch_size = 500
     max_epochs = 100
@@ -38,52 +33,20 @@ if __name__ == '__main__':
     val_set = ChannelInfoDatasetTest(G, f)
 
     # Step 3: create the NN model to be trained and train the model.
-    net = UserAssociationNet(input_dims=num_BDs, output_dims=num_BDs).to(device)
-    net = train_nn(net, train_set=train_set, val_set=val_set, device=device,
-                   batch_size=train_batch_size, max_epochs=max_epochs) if OVERWRITE_MODEL \
-        else load_model(model_path, model_name)
+    # net = UserAssociationNet(input_dims=num_BDs, output_dims=num_BDs).to(device)
+    # net = train_nn(net, train_set=train_set, val_set=val_set, device=device,
+    #                batch_size=train_batch_size, max_epochs=max_epochs) if OVERWRITE_MODEL \
+    #     else load_model(model_path, model_name)
 
     # Step 4: test the model
-    test_loader = data.DataLoader(val_set, batch_size=500, pin_memory=True, shuffle=False, drop_last=True)
-    optimal = torch.Tensor()
-    random_res = torch.Tensor()
-    dnn_res = torch.Tensor()
-    for G_batch, f_batch, t_batch, optimal_throughput, optimal_policy in tqdm(test_loader,
-                                                                              desc='Testing the model performance'):
-        G_batch, f_batch, t_batch, optimal_throughput, optimal_policy = G_batch.to(device), f_batch.to(
-            device), t_batch.to(device), optimal_throughput.to(device), optimal_policy.to(device)
-        with torch.no_grad():
-            channel_gains = torch.abs(G_batch[t_batch.squeeze_(dim=-1)]).float()
-            as_vect_test = net.forward(channel_gains)
-            # as_vect_test = output2onehot(as_vect_test)
-            achieved_throughput = calculate_throughput(G_batch, f_batch, t_batch, as_vect_test)
-        optimal = torch.cat([optimal, optimal_throughput.cpu().view(-1)], dim=0)
-        dnn_res = torch.cat([dnn_res, achieved_throughput.cpu().view(-1)], dim=0)
-        random_policy = (torch.eye(num_BDs, dtype=torch.float32))[
-            torch.randint(high=num_BDs, size=(achieved_throughput.shape[0],))].to(device)
-        achieved_throughput = calculate_throughput(G_batch, f_batch, t_batch, random_policy)
-        random_res = torch.cat([random_res, achieved_throughput.cpu().view(-1)], dim=0)
+    # test_loader = data.DataLoader(val_set, batch_size=500, pin_memory=True, shuffle=False, drop_last=True)
 
-    # Step 5: Save and plot the results.
-    os.makedirs(result_save_path, exist_ok=True)
-    percentage = 0.0001
-    optimal = optimal.cpu().numpy()
-    random_res = random_res.cpu().numpy()
-    dnn_res = dnn_res.cpu().numpy()
-    np.save(os.path.join(result_save_path, 'optimal.npy'), optimal)
-    np.save(os.path.join(result_save_path, 'random_res.npy'), random_res)
-    np.save(os.path.join(result_save_path, 'dnn_res.npy'), dnn_res)
+    # Step 5: save & plot
+    # unsupervised_learning_test(net, test_set=val_set,
+    #                            path=result_save_path+'unsupervised_learning', save_res=True, plot=True)
 
-    sns.set()
-    total_epochs = dnn_res.shape[0]
-    plotted_epochs = int(percentage * total_epochs)
-    epochs = np.arange(0, total_epochs, step=1)
-    plt.figure(figsize=(18, 3))
-    plt.plot(epochs[:plotted_epochs], optimal[:plotted_epochs], label="optimal")
-    plt.plot(epochs[:plotted_epochs], random_res[:plotted_epochs], label="random policy")
-    plt.plot(epochs[:plotted_epochs], dnn_res[:plotted_epochs], label="unsupervised learning")
-    plt.ylabel("Achieved throughput")
-    plt.xlabel("Index of testing epochs")
-    plt.title("Result")
-    plt.legend()
-    plt.show()
+    # Step 6: train DQN
+    DQN_Agent = agent = DQNAgent(gamma=0.99, epsilon=1.0, lr=0.001,
+                                 state_dims=num_BDs+1, num_actions=num_BDs, action_dims=1)
+    train_dqn(DQN_Agent, train_set)
+
