@@ -16,8 +16,8 @@ if __name__ == '__main__':
     OVERWRITE_MODEL = True
     OVERWRITE_DATASET = True
     # parameters:
-    num_MUs = 3
-    num_BDs = 3
+    num_MUs = 10
+    num_BDs = 10
     num_batches = 1000_000
     train_batch_size = 500
     test_batch_size = 500
@@ -48,7 +48,8 @@ if __name__ == '__main__':
     optimal = torch.Tensor()
     random_res = torch.Tensor()
     dnn_res = torch.Tensor()
-    for G_batch, f_batch, t_batch, optimal_throughput, optimal_policy in tqdm(test_loader):
+    for G_batch, f_batch, t_batch, optimal_throughput, optimal_policy in tqdm(test_loader,
+                                                                              desc='Testing the model performance'):
         G_batch, f_batch, t_batch, optimal_throughput, optimal_policy = G_batch.to(device), f_batch.to(
             device), t_batch.to(device), optimal_throughput.to(device), optimal_policy.to(device)
         with torch.no_grad():

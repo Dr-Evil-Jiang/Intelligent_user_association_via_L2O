@@ -34,12 +34,31 @@ class UserAssociationNet(nn.Module):
         return output
 
 
+# Deep Q-Nets:
+class DeepQNetwork(nn.Module):
+    def __init__(self, state_dims, action_dims):
+        super().__init__()
+        self.fc1 = nn.Linear(state_dims, 128)
+        self.fc2 = nn.Linear(128, 128)
+        self.fc3 = nn.Linear(128, action_dims)
+        self.relu = nn.ReLU(inplace=True)
+
+    def forward(self, state_batch):
+        x = self.fc1(state_batch)
+        x = self.relu(x)
+        x = self.fc2(x)
+        x = self.relu(x)
+        x = self.fc3(x)
+        return x
+
+
 # Loss modules:
 class UserAssociationLoss(nn.Module):
     def __init__(self):
         super().__init__()
 
-    def forward(self, G, f, t, as_vect):
+    @staticmethod
+    def forward(G, f, t, as_vect):
         """
         Function: forward call
         G: channel matrix from BDs to MUs, Tensor in shape [batch_size, M, N]
@@ -47,8 +66,9 @@ class UserAssociationLoss(nn.Module):
         t: TDMA scheduler indicating which MU is currently transmitting, Tensor one-hot[bool], in shape [batch_size, M, 1]
         as_vect: user association vector via Grumble trick , Tensor in shape [batch_size, N]
         """
-        # loss = - w * torch.sum(calculate_throughput(G, f, t, as_vect)) \
-        #        - (1 - w) * torch.sum(as_vect * torch.log2(as_vect)) # Not good
-        loss = - torch.sum(calculate_throughput(G, f, t, as_vect)) # good performance
+        w = 0.90
+        loss = - w * torch.sum(calculate_throughput(G, f, t, as_vect)) \
+               - (1 - w) * torch.sum(as_vect * torch.log2(as_vect))  # Not good
+        # loss = - torch.sum(calculate_throughput(G, f, t, as_vect)) # good performance
         return loss
 
