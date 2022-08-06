@@ -1,7 +1,7 @@
 import gym
 import numpy as np
 from DQN import DQNAgent
-from gym import wrappers
+
 
 if __name__ == '__main__':
     env = gym.make('CartPole-v0')

@@ -13,16 +13,15 @@ from networks import DeepQNetwork
 
 
 class ReplayMemory:
-    def __init__(self, max_size, state_dims, action_dims):
+    def __init__(self, max_size, state_dims):
         self.max_size = max_size
         self.state_dims = state_dims
-        self.action_dims = action_dims
         self.memory_cntr = 0
-        self.curr_states = np.zeros((max_size, state_dims))
-        self.actions = np.zeros((max_size, action_dims), dtype=np.int64)
-        self.rewards = np.zeros((max_size, 1), dtype=np.float32)
-        self.next_states = np.zeros((max_size, state_dims))
-        self.is_terminated = np.zeros((max_size, 1), dtype=np.bool)
+        self.curr_states = np.zeros((max_size, state_dims), dtype=np.float32)
+        self.actions = np.zeros(max_size, dtype=np.int64)
+        self.rewards = np.zeros(max_size, dtype=np.float32)
+        self.next_states = np.zeros((max_size, state_dims), dtype=np.float32)
+        self.is_terminated = np.zeros(max_size, dtype=np.bool)
 
     def push_transition(self, curr_state, action, reward, next_state, is_terminated):
         """
@@ -42,8 +41,10 @@ class ReplayMemory:
         self.memory_cntr += 1
 
     def sample_memory(self, batch_size):
-        assert batch_size < self.max_size, f'The input batch_size must be no larger than the size of memory pool!'
-        batch_idx = np.random.randint(low=0, high=self.max_size, size=(batch_size, ))
+        max_mem = min(self.memory_cntr, self.max_size)
+        batch_idx = np.random.choice(max_mem, batch_size, replace=False)
+        # assert batch_size < self.max_size, f'The input batch_size must be no larger than the size of memory pool!'
+        # batch_idx = np.random.randint(low=0, high=self.max_size, size=(batch_size, ))
         curr_state_batch = self.curr_states[batch_idx]
         action_batch = self.actions[batch_idx]
         reward_batch = self.rewards[batch_idx]
@@ -67,12 +68,12 @@ class DQNAgent:
         self.eps_min = eps_min
         self.device = device
         self.total_step = 0
-        self.memory = ReplayMemory(max_size=memory_size, state_dims=state_dims, action_dims=action_dims)
+        self.memory = ReplayMemory(memory_size, state_dims)
 
         self.q_eval = DeepQNetwork(state_dims, num_actions).to(device)  # Q eval
         self.q_target = DeepQNetwork(state_dims, num_actions).to(device)  # Q target
-        self.q_eval_optimizer = torch.optim.Adam(self.q_eval.parameters(), lr=lr)
-        self.loss_module = nn.SmoothL1Loss()
+        self.q_eval_optimizer = torch.optim.RMSprop(self.q_eval.parameters(), lr=lr)
+        self.loss_module = nn.MSELoss()
 
     def memorize(self, curr_state, action, reward, next_state, is_terminated):
         self.memory.push_transition(curr_state, action, reward, next_state, is_terminated)
@@ -92,9 +93,9 @@ class DQNAgent:
     def take_action(self, observation):
         # observation is in the identical shape with the state_dims
         observation = torch.from_numpy(observation).float().to(self.device)
-        if np.random.randn() > self.epsilon:  # exploitation
+        if np.random.random() > self.epsilon:  # exploitation
             actions = self.q_eval(observation)
-            action = torch.argmax(actions).cpu().item()
+            action = torch.argmax(actions).item()
         else:  # exploration
             action = torch.randint(low=0, high=self.num_actions, size=(1,)).item()
         return action
@@ -131,9 +132,3 @@ class DQNAgent:
 
         self.total_step += 1
         self.decrement_epsilon()
-
-
-
-
-
-
