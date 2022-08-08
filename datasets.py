@@ -5,7 +5,7 @@ import torch.optim as optim
 import torch.utils.data as data
 import torch.nn.functional as F
 from tqdm import tqdm
-from utils import *
+from utils import calculate_throughput
 
 
 class ChannelInfoDatasetTrain(data.Dataset):
@@ -82,3 +82,35 @@ class ChannelInfoDatasetTest(ChannelInfoDatasetTrain):
         """
         return self.G[idx], self.f[idx], self.t[idx], self.optimal_throughput[idx], self.optimal_policy[idx]
 
+
+def split_train_val_test(G, f, train_ratio=0.8):
+    """
+    Function: this function is to split the train set, validation set, and the test set
+    :param G: ndarray in shape [batch_size, M, N]
+    :param f: ndarray in shape [batch_size, M, 1]
+    :param train_ratio: float the ratio between the number of train batches to the number of total batches
+    :return:
+    """
+    total_batch = G.shape[0]
+    train_size = int(train_ratio * total_batch)
+    # Train set:
+    train_set = ChannelInfoDatasetTrain(G[:train_size], f[:train_size])
+    # Validation set:
+    val_batch_idx = np.random.randint(0, train_size, size=(int(train_size * 0.3)))
+    val_set = ChannelInfoDatasetTest(G[val_batch_idx], f[val_batch_idx])
+    # Test set:
+    test_set = ChannelInfoDatasetTest(G[train_size:], f[train_size:])
+    return train_set, val_set, test_set
+
+
+def split_train_val_test_with_labels(G, f, train_ratio=0.8):
+    total_batch = G.shape[0]
+    train_size = int(train_ratio * total_batch)
+    # Train set:
+    train_set = ChannelInfoDatasetTest(G[:train_size], f[:train_size])
+    # Validation set:
+    val_batch_idx = np.random.randint(0, train_size, size=(int(train_size * 0.3)))
+    val_set = ChannelInfoDatasetTest(G[val_batch_idx], f[val_batch_idx])
+    # Test set:
+    test_set = ChannelInfoDatasetTest(G[train_size:], f[train_size:])
+    return train_set, val_set, test_set

@@ -5,11 +5,11 @@ import torch.optim as optim
 import torch.utils.data as data
 import torch.nn.functional as F
 from tqdm import tqdm
-from utils import *
+from utils import calculate_throughput
 
 
 # Networks:
-class UserAssociationNet(nn.Module):
+class UserAssociationNetUSL(nn.Module):
     def __init__(self, input_dims, output_dims):
         super().__init__()
         self.fc1 = nn.Linear(input_dims, 128)
@@ -31,6 +31,31 @@ class UserAssociationNet(nn.Module):
         output = self.dp2(output)
         output = self.fc3(output)
         output = self.gumbel_softmax(output, hard=False) if self.training else self.gumbel_softmax(output, hard=True)
+        return output
+
+
+class UserAssociationNetSL(nn.Module):
+    def __init__(self, input_dims, output_dims):
+        super().__init__()
+        self.fc1 = nn.Linear(input_dims, 128)
+        self.bn1 = nn.BatchNorm1d(128)
+        self.dp1 = nn.Dropout(p=0.2)
+        self.fc2 = nn.Linear(128, 64)
+        self.bn2 = nn.BatchNorm1d(64)
+        self.dp2 = nn.Dropout(p=0.2)
+        self.fc3 = nn.Linear(64, output_dims)
+        self.elu = nn.ELU(inplace=True)
+        self.gumbel_softmax = F.gumbel_softmax
+
+    def forward(self, x):
+        output = self.fc1(x)
+        output = self.elu(output)
+        output = self.dp1(output)
+        output = self.fc2(output)
+        output = self.elu(output)
+        output = self.dp2(output)
+        output = self.fc3(output)
+        output = output if self.training else self.gumbel_softmax(output, hard=True)
         return output
 
 

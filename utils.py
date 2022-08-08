@@ -84,7 +84,7 @@ def generate_dataset(num_BDs, num_MUs, num_channel_realizations, region=(100, 10
 
 def calculate_throughput(G, f, t, as_vect):
     """
-    Function: calculate throughput.
+    Function: calculate throughput
     :param
         G: channel matrix from BDs to MUs, Tensor in shape [batch_size, M, N]
         f: channel vector from BS to BDs, Tensor in shape [batch_size, N, 1]
@@ -126,44 +126,7 @@ def load_model(model_file, model_name):
     return net
 
 
-def unsupervised_learning_test(net, test_set, save_res=True, path ='./results/unsupervised_learning', plot=False):
-    """
-    Function: to evaluate the performance of unsupervised learning
-    :param net: pytorch model obj
-    :param test_set: pytorch.data.Dataset
-    :param save_res: whether to save the results
-    :param path: where the results will be saved
-    :param plot: bool whether to plot the results
-    :return:
-    """
-    net.eval()
-    net.cpu()
-    test_loader = data.DataLoader(test_set, batch_size=len(test_set), shuffle=False)
-    optimal = torch.Tensor()
-    random_res = torch.Tensor()
-    dnn_res = torch.Tensor()
-    G_batch, f_batch, t_batch, optimal_throughput, _ = next(iter(test_loader))
 
-    with torch.no_grad():
-        channel_gains = torch.abs(G_batch[t_batch.squeeze_(dim=-1)]).float()
-        as_vect_test = net.forward(channel_gains)
-        achieved_throughput = calculate_throughput(G_batch, f_batch, t_batch, as_vect_test)
-    optimal = torch.cat([optimal, optimal_throughput.view(-1)], dim=0)
-    dnn_res = torch.cat([dnn_res, achieved_throughput.view(-1)], dim=0)
-    random_policy = (torch.eye(as_vect_test.shape[1], dtype=torch.float32))[
-        torch.randint(high=as_vect_test.shape[1], size=(achieved_throughput.shape[0],))]
-    achieved_throughput = calculate_throughput(G_batch, f_batch, t_batch, random_policy)
-    random_res = torch.cat([random_res, achieved_throughput.cpu().view(-1)], dim=0)
-    if save_res:
-        os.makedirs(path, exist_ok=True)
-        optimal = optimal.cpu().numpy()
-        random_res = random_res.cpu().numpy()
-        dnn_res = dnn_res.cpu().numpy()
-        np.save(os.path.join(path, 'optimal.npy'), optimal)
-        np.save(os.path.join(path, 'random_res.npy'), random_res)
-        np.save(os.path.join(path, 'dnn_res.npy'), dnn_res)
-    if plot:
-        plot_unsupervised_learning_results(path)
 
 
 
